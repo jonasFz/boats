@@ -1,0 +1,25 @@
+#version 330 core
+in vec3 pos;
+in vec3 normal;
+in vec2 text;
+
+out vec3 surface_normal;
+out vec3 to_light;
+out vec2 text_pass;
+
+uniform mat4 trans;
+uniform mat4 projection;
+uniform mat4 view;
+uniform vec3 light_position;
+
+void main(){
+
+	vec4 world_position = trans * vec4(pos.x, pos.y, pos.z, 1.0);
+	gl_Position = projection * view * world_position;
+
+	surface_normal = (trans * vec4(normal, 0.0)).xyz;
+	
+	to_light = light_position - world_position.xyz;
+
+	text_pass = text;
+}
