@@ -37,13 +37,13 @@ Vec3 angle_to_direction(Vec3 v){
 
 Vec3 rotate_x_axis(Vec3 start, float rad){
 	Mat4 rot = make_rotation_matrix(rad, 0.0f, 0.0f);
-	//return __apply_rotation(&rot, start);
+	
 	return transform(&rot, &start);
 }
 
 Vec3 rotate_y_axis(Vec3 start, float rad){
 	Mat4 rot = make_rotation_matrix(0.0f, rad, 0.0f);
-	//return __apply_rotation(&rot, start);
+	
 	return transform(&rot, &start);
 }
 
@@ -72,7 +72,6 @@ Vec3 sub_vec(Vec3 a, Vec3 b){
 	ret.z = a.z-b.z;
 
 	return ret;
-
 }
 
 Mat4 make_view_matrix(Vec3 right, Vec3 up, Vec3 forward, Vec3 position){

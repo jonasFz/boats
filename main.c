@@ -1,10 +1,3 @@
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-
-#include <GL/glew.h>
-#include <GL/gl.h>
-#include <GL/glx.h>
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -60,6 +53,8 @@ void move_entity(Entity *entity, float x, float y, float z){
 	entity->position.z += z;
 }
 
+
+
 int main(){
 	assert(sizeof(Vec3) == 12);
 
@@ -93,28 +88,47 @@ int main(){
 	Render_Context context;
 	context.projection = make_projection_matrix(4.0f/3.0f, 1.0f, 1000, 0.1);
 
-	Surface surface = make_surface(10, 6);
-	for(int i = 0; i< 10; i++){
+	float l_div = 10.0f/11;
+
+	float dys[11] = {0.13f, 0.15f, 0.16f, 0.169f, 0.175f, 0.175f, 0.165f, 0.150f, 0.12f, 0.075f, 0.0f};
+
+	float shape[6] = {0.0f, 0.1f, 0.6, 0.90f, 1.0f, 0.99f};
+
+	Surface port_surface = make_surface(11, 6);
+	Surface star_surface = make_surface(11, 6);
+	for(int i = 0; i < 11; i++){
 		for(int j = 0; j < 6; j++){
-			Vec3 before = get_position(&surface, i, j);
-			before.x *= 2;
+			Vec3 before = get_position(&port_surface, i, j);
+			before.x = l_div*i;
+			before.z = dys[i]*6.0f*shape[j];
 			//before = scale(before, make_vec3(20.0f, 1.0f, 1.0f));
 			//show_vec3(before);
 			
-			Vec3 after = make_vec3(before.x, before.y, ((float)j/6) *  -before.x*before.x+2);
-			set_position(&surface, i, j, after);
+			set_position(&port_surface, i, j, before);
+			before.z = before.z*(-1);
+			set_position(&star_surface, 10-i, j, before);
 		}
 	}
 
-	Mesh_Data surface_mesh = mesh_from_surface(surface);
+	Mesh_Data port_mesh = mesh_from_surface(port_surface);
+	Mesh_Data star_mesh = mesh_from_surface(star_surface);
+	//flip_normals(&star_mesh);
 
-	Buffered_Mesh_Handle surface_handle = buffer_mesh_data(surface_mesh);
+	Buffered_Mesh_Handle port_surface_handle = buffer_mesh_data(port_mesh);
+	Buffered_Mesh_Handle star_surface_handle = buffer_mesh_data(star_mesh);
 
-	unsigned int number_of_entities = 1;
+	unsigned int number_of_entities = 3;
 	Entity *entities = (Entity *)malloc(sizeof(Entity) * number_of_entities);
 
-	make_entity(entities, surface_handle, texture_handle);
+	make_entity(entities, port_surface_handle, texture_handle);
+	make_entity(entities+1, star_surface_handle, texture_handle);
+
+	Mesh_Data polygon = make_extruded_polygon(6, 0.1f, 1.0f);
+	Buffered_Mesh_Handle polygon_handle = buffer_mesh_data(polygon);
+	make_entity(entities+2, polygon_handle, texture_handle);
+	entities[2].position.y = 5;
 /*
+
 	unsigned int number_of_entities = number_of_pieces(&h) + 5;
 	Entity *entities = (Entity *)malloc(sizeof(Entity) * number_of_entities);
 	
@@ -140,7 +154,7 @@ int main(){
 	context.camera.angle = make_vec3(0.0f, 0.0f, 0.0f);
 	context.shader_program = shader_program;
 	
-	context.light_position = make_vec3(0.0f, 10.0f, 2.0f);
+	context.light_position = make_vec3(0.0f, 0.0f, 10.0f);
 	context.light_colour = make_vec3(1.0f, 1.0f, 1.0f);
 
 	Input_State input_state;
@@ -150,7 +164,9 @@ int main(){
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glEnable(GL_MULTISAMPLE);
 
-	while (1) {
+	int running = 1;
+
+	while (running) {
 		maybe_update_mouse_position(&input_state, &renderer);
 		Vec3 p = make_vec3(0.0f, 0.0f, -1.0f);
 		Mat4 facing_rotation = make_rotation_matrix(context.camera.angle.x, context.camera.angle.y, context.camera.angle.z);
@@ -199,10 +215,16 @@ int main(){
 				case 113:
 				context.camera.angle.y -= ROT_AMOUNT;
 				break;
+				case 9:
+				running = 0;
+				break;
+				default:
+				printf("Key code: %d\n", kc);
+				break;
 			}
 		}
 
-		glClearColor(0.1, 0.1, 0.1, 1.0);
+		glClearColor(0.8, 0.8, 0.8, 1.0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glUseProgram(shader_program);
 

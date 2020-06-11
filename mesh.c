@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <assert.h>
+
 #include "matrix.h"
 #include "mesh.h"
 
@@ -40,6 +42,97 @@ void free_mesh(Mesh_Data *mesh){
 	mesh->normal_count = 0;
 	mesh->texture_count = 0;
 	mesh->index_count = 0;
+}
+
+Mesh_Data make_extruded_polygon(unsigned int count, float radius, float length){
+	assert(count > 2);
+	Mesh_Data mesh;
+	allocate_mesh(&mesh, 2*(count+1) + count*4, 2*(count*3) + count*2*3);
+	//allocate_mesh(&mesh, 2*(1+count) + count*4, (2*count + 2*count)*3);
+
+	int vc = 0;
+	int ii = 0;
+
+	double pi = 3.14159;
+
+	mesh.vertices[vc++] = 0.0f;
+	mesh.vertices[vc++] = 0.0f;
+	mesh.vertices[vc++] = 0.0f;
+
+	for(int i = 0; i < count; i++){
+		mesh.vertices[vc++] = radius*cos(i*2*pi/count);
+		mesh.vertices[vc++] = 0.0f;
+		mesh.vertices[vc++] = radius*sin(i*2*pi/count);
+
+		printf("%f %f %f\n", mesh.vertices[vc-3], mesh.vertices[vc-2], mesh.vertices[vc-1]);
+	}
+
+	for(int i = 0; i < count; i++){
+		mesh.indices[ii++] = 0;
+		mesh.indices[ii++] = (i+1)%count + 1;
+		mesh.indices[ii++] = i%count + 1;
+
+		printf("%d %d %d\n", 0, i%count+1, (i+1)%count+1);
+	}
+
+	mesh.vertices[vc++] = 0.0f;
+	mesh.vertices[vc++] = length;
+	mesh.vertices[vc++] = 0.0f;
+
+	for(int i = 0; i < count; i++){
+		mesh.vertices[vc++] = radius*cos(i*2*pi/count);
+		mesh.vertices[vc++] = length;
+		mesh.vertices[vc++] = radius*sin(i*2*pi/count);
+	}
+
+	for(int i = 0; i < count; i++){
+		
+		mesh.indices[ii++] = count+1;
+		mesh.indices[ii++] = count+1+(i)%count + 1;
+		mesh.indices[ii++] = count+1+(i+1)%count + 1;
+	}
+
+	for(int i = 0; i < count; i++){
+		mesh.vertices[vc++] = radius*cos(i*2*pi/count);
+		mesh.vertices[vc++] = 0.0f;
+		mesh.vertices[vc++] = radius*sin(i*2*pi/count);
+
+		mesh.vertices[vc++] = radius*cos(i*2*pi/count);
+		mesh.vertices[vc++] = length;
+		mesh.vertices[vc++] = radius*sin(i*2*pi/count);
+
+		mesh.vertices[vc++] = radius*cos((i+1)*2*pi/count);
+		mesh.vertices[vc++] = 0.0f;
+		mesh.vertices[vc++] = radius*sin((i+1)*2*pi/count);
+
+		mesh.vertices[vc++] = radius*cos((i+1)*2*pi/count);
+		mesh.vertices[vc++] = length;
+		mesh.vertices[vc++] = radius*sin((i+1)*2*pi/count);
+	}
+
+	int h = (count + 1) * 2;
+	for(int i = 0; i < count; i++){
+		mesh.indices[ii++] = h+i*4;
+		mesh.indices[ii++] = h+i*4+3;
+		mesh.indices[ii++] = h+i*4+1;
+
+		mesh.indices[ii++] = h+i*4;
+		mesh.indices[ii++] = h+i*4+2;
+		mesh.indices[ii++] = h+i*4+3;
+	}	
+
+	calculate_normals(&mesh);
+
+	return mesh;
+}
+
+void flip_normals(Mesh_Data *data){
+	for(int i = 0; i < data->index_count/3; i++){
+		unsigned int temp = data->indices[i*3];
+		data->indices[i*3] = data->indices[i*3+1];
+		data->indices[i*3+1] = temp;
+	}
+	calculate_normals(data);
 }
 
 void calculate_normals(Mesh_Data *data){

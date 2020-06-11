@@ -21,11 +21,14 @@ typedef struct{
 
 void free_mesh(Mesh_Data *mesh);
 
+void flip_normals(Mesh_Data *data);
 void calculate_normals(Mesh_Data *data);
 
 Mesh_Data make_hexagon_mesh();
 
 Mesh_Data make_plane_mesh();
+
+Mesh_Data make_extruded_polygon(unsigned int count, float radius, float length);
 
 void allocate_mesh(Mesh_Data *mesh, size_t vertices, size_t indices);
 

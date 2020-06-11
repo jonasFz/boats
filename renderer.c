@@ -6,6 +6,8 @@
 char *load_file_as_string(const char *file_path, int *length);
 
 Vec3 get_window_dimensions(Renderer *renderer){
+	
+	#ifdef __linux__
 	Window root;
 	int x;
 	int y;
@@ -27,11 +29,15 @@ Vec3 get_window_dimensions(Renderer *renderer){
 	ret.x = width;
 	ret.y = height;
 	ret.z = 0.0f;
-
+	
 	return ret;
+	#else
+	return make_vec3(0.0f, 0.0f, 0.0f);
+	#endif
 }
 
 Vec3 get_mouse_position(Renderer *renderer){
+	#ifdef __linux__
 	Window root;
 	Window child;
 	int root_x;
@@ -63,6 +69,9 @@ Vec3 get_mouse_position(Renderer *renderer){
 	ret.z = 0.0f;
 
 	return ret;
+	#else
+	return make_vec3(0.0f, 0.0f, 0.0f);
+	#endif
 }
 
 void swap_buffer(Renderer* renderer){
@@ -72,6 +81,7 @@ void swap_buffer(Renderer* renderer){
 void close_display(Renderer* renderer){
 	XCloseDisplay(renderer->display);
 }
+
 
 void print_gl_error(GLenum val){
 	switch(val){
@@ -101,7 +111,7 @@ void print_gl_error(GLenum val){
 void render_entities(Renderer *renderer, Render_Context *context, Entity* entities, int entity_count){
 	
 	for(int i = 0; i < entity_count; i++){
-		Entity entity = *(entities + i);
+		Entity entity = entities[i];
 		Buffered_Mesh_Handle handle = entity.handle;
 		glBindVertexArray(handle.pointer);
 
@@ -151,7 +161,7 @@ void render_entities(Renderer *renderer, Render_Context *context, Entity* entiti
 		glDisableVertexAttribArray(2);
 		GLenum er = glGetError();
 		if(er != GL_NO_ERROR){
-			printf("We got some kinda error\n");
+			printf("We got some kinda error in the render loop\n");
 			print_gl_error(er);
 			exit(1);
 		}
@@ -344,7 +354,6 @@ int load_glsl_program(const char *vertex_shader_path, const char *fragment_shade
 	glAttachShader(shader_program, vertex_shader);
 	glAttachShader(shader_program, fragment_shader);
 	glLinkProgram(shader_program);
-
 
 	GLint success = 0;
 	glGetProgramiv(shader_program, GL_LINK_STATUS, &success);

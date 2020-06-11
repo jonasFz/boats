@@ -1,12 +1,11 @@
 #ifndef _H_RENDERER
 #define _H_RENDERER
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-
-#include <GL/glew.h>
-#include <GL/gl.h>
-#include <GL/glx.h>
+#ifdef __linux__
+	#include <GL/glew.h>
+	#include <GL/gl.h>
+	#include <GL/glx.h>
+#endif
 
 #include "matrix.h"
 #include "mesh.h"
@@ -50,7 +49,9 @@ typedef struct{
 	Vec3 light_colour;
 }Render_Context;
 
+#ifdef __linux__
 typedef GLXContext (*proc)(Display*, GLXFBConfig, GLXContext, int, const int*);
+#endif
 unsigned int buffer_texture(float *data, int width, int height);
 
 typedef struct{
@@ -77,6 +78,5 @@ void close_display(Renderer* renderer);
 Buffered_Mesh_Handle buffer_mesh_data(Mesh_Data mesh_data);
 
 int load_glsl_program(const char *vertex_shader_path, const char *fragment_shader_path);
-
 
 #endif
