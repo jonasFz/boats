@@ -44,6 +44,9 @@ typedef struct{
 	Mat4 projection;
 	Camera camera;
 	int shader_program;
+	int text_shader_program;
+
+	Buffered_Mesh_Handle billboard_quad;
 
 	Vec3 light_position;
 	Vec3 light_colour;
@@ -59,8 +62,11 @@ typedef struct{
 	Display *display;
 	Window window;
 	XEvent event;
+
+
 }Renderer;
 
+void render_billboard(Renderer *renderer, Render_Context *context, unsigned int texture_id, float x1, float y1, float x2, float y2);
 
 void render_entities(Renderer *renderer, Render_Context *context, Entity *entities, int entity_count);
 
@@ -78,5 +84,7 @@ void close_display(Renderer* renderer);
 Buffered_Mesh_Handle buffer_mesh_data(Mesh_Data mesh_data);
 
 int load_glsl_program(const char *vertex_shader_path, const char *fragment_shader_path);
+
+Vec3 get_window_dimensions(Renderer *renderer);
 
 #endif

@@ -35,4 +35,5 @@ void allocate_mesh(Mesh_Data *mesh, size_t vertices, size_t indices);
 void normalize_mesh(Mesh_Data *md);
 void move_mesh_origin(Mesh_Data *md, Vec3 change);
 Mesh_Data load_mesh_data(char *filepath);
+Mesh_Data load_stl_file(char *filepath);
 #endif

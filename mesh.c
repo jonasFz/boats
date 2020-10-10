@@ -63,16 +63,12 @@ Mesh_Data make_extruded_polygon(unsigned int count, float radius, float length){
 		mesh.vertices[vc++] = radius*cos(i*2*pi/count);
 		mesh.vertices[vc++] = 0.0f;
 		mesh.vertices[vc++] = radius*sin(i*2*pi/count);
-
-		printf("%f %f %f\n", mesh.vertices[vc-3], mesh.vertices[vc-2], mesh.vertices[vc-1]);
 	}
 
 	for(int i = 0; i < count; i++){
 		mesh.indices[ii++] = 0;
 		mesh.indices[ii++] = (i+1)%count + 1;
 		mesh.indices[ii++] = i%count + 1;
-
-		printf("%d %d %d\n", 0, i%count+1, (i+1)%count+1);
 	}
 
 	mesh.vertices[vc++] = 0.0f;
@@ -135,6 +131,15 @@ void flip_normals(Mesh_Data *data){
 	calculate_normals(data);
 }
 
+//@maybe opengl specific
+void __swap_y_and_z_for_opengl(Mesh_Data *data){
+	for(int v = 0; v < data->vertex_count/3; v++){
+		float temp = data->vertices[v*3+1];
+		data->vertices[v*3+1] = data->vertices[v*3+2];
+		data->vertices[v*3+2] = temp;
+	}
+}
+
 void calculate_normals(Mesh_Data *data){
 	float *v = data->vertices;
 	float *n = data->normals;
@@ -191,6 +196,95 @@ void calculate_normals(Mesh_Data *data){
 		norm = normalize(norm);
 		n[i*3] = norm.x; n[i*3+1] = norm.y; n[i*3+2] = norm.z;
 	}
+}
+
+char *load_raw(const char *file_path, int *length){
+	FILE* in_file = fopen(file_path, "rb");
+	if(!in_file){
+		fprintf(stderr, "Failed to load file %s\n", file_path);
+		return NULL;
+	}
+	fseek(in_file, 0, SEEK_END);
+	int file_length = ftell(in_file);
+	fseek(in_file, 0, SEEK_SET);
+	*length = file_length;
+	char *ret = (char *)malloc(file_length);
+
+	fread(ret, 1, file_length, in_file);
+	
+	fclose(in_file);
+	return ret;
+}
+
+
+Mesh_Data load_stl_file(char *filepath){
+	Mesh_Data md;
+	int file_length = 0;
+	char *file = load_raw(filepath, &file_length);
+	
+	unsigned int triangle_count = *((unsigned int *)(file + 80));
+
+	for(int i = 84; i < 100; i++){
+		printf("%d: %x\n", i , file[i]);
+	}
+
+	printf("Triangle_count = %d\n", triangle_count);
+
+	allocate_mesh(&md, triangle_count*3, triangle_count*3);
+
+	int file_offset = 84; //80 byte header, 4 byte triangle count
+	int triangles_loaded = 0;
+
+	unsigned int v = 0;
+	unsigned int i = 0;
+
+	while(triangles_loaded < triangle_count){
+		file_offset += 4*3; //Skipping normal. We can just calculate it
+		md.vertices[v++] = *((float *)(file + file_offset)); file_offset+=4;
+		md.vertices[v++] = *((float *)(file + file_offset)); file_offset+=4;
+		md.vertices[v++] = *((float *)(file + file_offset)); file_offset+=4;
+		
+		md.vertices[v++] = *((float *)(file + file_offset)); file_offset+=4;
+		md.vertices[v++] = *((float *)(file + file_offset)); file_offset+=4;
+		md.vertices[v++] = *((float *)(file + file_offset)); file_offset+=4;
+		
+		md.vertices[v++] = *((float *)(file + file_offset)); file_offset+=4;
+		md.vertices[v++] = *((float *)(file + file_offset)); file_offset+=4;
+		md.vertices[v++] = *((float *)(file + file_offset)); file_offset+=4;
+
+		if(!(file[file_offset] == 0 && file[file_offset+1] == 0)){
+			printf("Failure to load stl file %s, we don't support attribute byte count being non zero\n", filepath);
+			return md;
+		}
+		file_offset += 2; //Skipping attribute byte count
+		
+		//Since we are not sharing verts, maybe we can add that later?
+		//It is just hard to do with our current shading method of per
+		//pixel lighting
+
+		//TODO, I somehow used the left hand rule instead of the right hand
+		//rule to calc normals, so this is a hack to make them face the right
+		//way, because obviously the model follows right hand rule.
+		md.indices[i] = i; i++;
+		md.indices[i] = i; i++;
+		md.indices[i] = i; i++;
+
+		triangles_loaded++;
+	}
+	for(int i = 0; i < 3; i++){
+		float x = md.vertices[i*3];
+		float y = md.vertices[i*3+1];
+		float z = md.vertices[i*3+2];
+
+		printf("%f %f %f\n", x, y, z);
+	}
+
+	__swap_y_and_z_for_opengl(&md);
+	calculate_normals(&md);
+
+	normalize_mesh(&md);
+	free(file);
+	return md;
 }
 
 Mesh_Data load_mesh_data(char *filepath){
@@ -369,6 +463,10 @@ Mesh_Data load_mesh_data(char *filepath){
 
 	md.indices = indices;
 	md.index_count = indices_loaded;
+
+	__swap_y_and_z_for_opengl(&md);
+
+	calculate_normals(&md);
 
 	free(v);
 	free(n);

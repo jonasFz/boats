@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include <stdio.h>
+
 #include <stdlib.h>
 #include "matrix.h"
 
@@ -108,6 +109,14 @@ void print_gl_error(GLenum val){
 	}
 }
 
+void gl_error_check(char *message){
+	GLenum er = glGetError();
+	if(er != GL_NO_ERROR){
+		printf("%s\n", message);
+		print_gl_error(er);
+		exit(1);
+	}
+}
 void render_entities(Renderer *renderer, Render_Context *context, Entity* entities, int entity_count){
 	
 	for(int i = 0; i < entity_count; i++){
@@ -151,11 +160,15 @@ void render_entities(Renderer *renderer, Render_Context *context, Entity* entiti
 
 
 		glActiveTexture(GL_TEXTURE0);
+		gl_error_check("Failed to set GL_TEXTURE0 to glActiveTexture");
+		gl_error_check("Failed to enable gl_texture_2d");
 		glBindTexture(GL_TEXTURE_2D, entity.texture_id);
+		gl_error_check("Failed to bind texture");
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		glEnableVertexAttribArray(2);
 		glDrawElements(GL_TRIANGLES, handle.index_count, GL_UNSIGNED_INT, (void *)0);
+		gl_error_check("Failed to draw elements\n");
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);
 		glDisableVertexAttribArray(2);
@@ -168,8 +181,53 @@ void render_entities(Renderer *renderer, Render_Context *context, Entity* entiti
 	}
 }
 
-void render_text(Renderer *renderer, const char *text, float x, float y){
+void render_billboard(Renderer *renderer, Render_Context *context, unsigned int texture_id,float x1, float y1, float x2, float y2){
+	glUseProgram(context->text_shader_program);
+	Buffered_Mesh_Handle handle = context->billboard_quad;
+	glBindVertexArray(handle.pointer);
 
+	Mat4 scale = make_scale_matrix((x2-x1)/2, (y2-y1)/2, 1.0f);
+	Mat4 trans = make_translation_matrix(x1 + (x2-x1)/2, y1 + (y2-y1)/2, 0.0f);
+	Mat4 rot = make_rotation_matrix(0, 0, 0);
+			
+	Mat4 m = multiply_matrix(&rot, &scale);
+	m = multiply_matrix(&m, &trans);
+
+
+
+	GLuint mat_id = glGetUniformLocation(context->text_shader_program, "trans");
+	glUniformMatrix4fv(mat_id, 1, GL_FALSE, m.data);
+
+	GLuint tbl = glGetUniformLocation(context->text_shader_program, "tbl");
+	GLuint ttr = glGetUniformLocation(context->text_shader_program, "ttr");
+
+	glUniform2f(tbl, 9.0f/16, 1.0f/8);
+	glUniform2f(ttr, 10.0f/16, 2.0f/8);
+
+	//glUniform2f(tbl, 0, 0);
+	//glUniform2f(ttr, 1, 1);
+
+	glActiveTexture(GL_TEXTURE0);
+	gl_error_check("Failed to set GL_TEXTURE0 to glActiveTexture");
+	gl_error_check("Failed to enable gl_texture_2d");
+	glBindTexture(GL_TEXTURE_2D, texture_id);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glDrawElements(GL_TRIANGLES, handle.index_count, GL_UNSIGNED_INT, (void *)0);
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+	GLenum er = glGetError();
+	if(er != GL_NO_ERROR){
+		printf("We got some kinda error in the billboard\n");
+		print_gl_error(er);
+		exit(1);
+	}
+}
+
+void render_text(Renderer *renderer, const char *text, float x, float y){
+	
 }
 
 int get_key_press(Renderer *renderer){
@@ -234,7 +292,7 @@ Renderer init_display(){
 	swa.colormap = color_map;
 	swa.event_mask = ExposureMask | KeyPressMask;
 
-	renderer.window = XCreateWindow(renderer.display, root, 10, 10, 800, 600, 0, visual->depth, InputOutput, visual->visual, CWColormap | CWEventMask, &swa);
+	renderer.window = XCreateWindow(renderer.display, root, 10, 10, 1200, 800, 0, visual->depth, InputOutput, visual->visual, CWColormap | CWEventMask, &swa);
 
 	XMapWindow(renderer.display, renderer.window);
 

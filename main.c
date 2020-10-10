@@ -32,11 +32,12 @@ char *load_file_as_string(const char *file_path, int *length){
 }
 
 float default_texture_data[12] = {
-	1.0f, 1.0f, 1.0f,
-	1.0f, 1.0f, 1.0f,
-	1.0f, 1.0f, 1.0f,
-	1.0f, 1.0f, 1.0f
+	1.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.0f,
+	1.0f, 0.0f, 1.0f
 };
+
 
 void make_entity(Entity *entity, Buffered_Mesh_Handle handle, unsigned int texture){
 	entity->texture_id = texture;
@@ -53,10 +54,9 @@ void move_entity(Entity *entity, float x, float y, float z){
 	entity->position.z += z;
 }
 
-
-
 int main(){
 	assert(sizeof(Vec3) == 12);
+
 
 	Hull h;
 	h.keel_length = 10;
@@ -75,6 +75,11 @@ int main(){
 
 	Renderer renderer = init_display(); 
 
+
+	unsigned int texture_handle = buffer_texture(default_texture_data, 2, 2);
+
+
+	//unsigned int texture_handle = buffer_texture(data, 128, 128);
 	Buffered_Mesh_Handle keel_handle = buffer_mesh_data(keel);
 	Buffered_Mesh_Handle bow_handle = buffer_mesh_data(bow);
 
@@ -82,11 +87,17 @@ int main(){
 	free_mesh(&bow);
 
 	//TODO find out why the buffer_texture call has to happen after the buffer_mesh_data call above
-	unsigned int texture_handle = buffer_texture(default_texture_data, 2, 2);
+	//unsigned int texture_handle = buffer_texture(default_texture_data, 2, 2);
+	printf("Texture handle = %u\n", texture_handle);
 	GLuint shader_program = load_glsl_program("vertex.txt", "fragment.txt");
 	
 	Render_Context context;
 	context.projection = make_projection_matrix(4.0f/3.0f, 1.0f, 1000, 0.1);
+	
+
+	GLuint text_shader = load_glsl_program("text_vertex.txt", "text_fragment.txt");
+	context.text_shader_program = text_shader;
+
 
 	float l_div = 10.0f/11;
 
@@ -117,17 +128,33 @@ int main(){
 	Buffered_Mesh_Handle port_surface_handle = buffer_mesh_data(port_mesh);
 	Buffered_Mesh_Handle star_surface_handle = buffer_mesh_data(star_mesh);
 
-	unsigned int number_of_entities = 3;
+	Mesh_Data test = load_stl_file("res/toy_boat.stl");
+
+	//Mesh_Data test = load_mesh_data("res/better_teapot.obj");
+	Buffered_Mesh_Handle test_handle = buffer_mesh_data(test);
+
+	unsigned int number_of_entities = 1;
 	Entity *entities = (Entity *)malloc(sizeof(Entity) * number_of_entities);
 
-	make_entity(entities, port_surface_handle, texture_handle);
-	make_entity(entities+1, star_surface_handle, texture_handle);
+	make_entity(entities, test_handle, texture_handle);
 
+	//make_entity(entities, port_surface_handle, texture_handle);
+	//make_entity(entities+1, star_surface_handle, texture_handle);
+
+	//Billboard stuff
+	Mesh_Data quad = make_plane_mesh();
+	Buffered_Mesh_Handle quad_handle = buffer_mesh_data(quad);
+//	free_mesh(&quad);
+	//make_entity(entities+2, quad_handle, texture_handle);
+	//entities[2].scale.y = 2;
+
+	context.billboard_quad = quad_handle;
+/*
 	Mesh_Data polygon = make_extruded_polygon(6, 0.1f, 1.0f);
 	Buffered_Mesh_Handle polygon_handle = buffer_mesh_data(polygon);
 	make_entity(entities+2, polygon_handle, texture_handle);
 	entities[2].position.y = 5;
-/*
+*//*
 
 	unsigned int number_of_entities = number_of_pieces(&h) + 5;
 	Entity *entities = (Entity *)malloc(sizeof(Entity) * number_of_entities);
@@ -149,12 +176,12 @@ int main(){
 		free_mesh(&rib);
 	}
 */
-	context.camera.entity.position = make_vec3(0.0f, 7.0f, 15.0f);
+	context.camera.entity.position = make_vec3(0.0f, 2.0f, 15.0f);
 	context.camera.facing = make_vec3(0.0f, 0.0f, -1.0f);
 	context.camera.angle = make_vec3(0.0f, 0.0f, 0.0f);
 	context.shader_program = shader_program;
 	
-	context.light_position = make_vec3(0.0f, 0.0f, 10.0f);
+	context.light_position = make_vec3(0.0f, 10.0f, 0.0f);
 	context.light_colour = make_vec3(1.0f, 1.0f, 1.0f);
 
 	Input_State input_state;
@@ -229,6 +256,12 @@ int main(){
 		glUseProgram(shader_program);
 
 		render_entities(&renderer, &context, entities, number_of_entities);
+
+		Vec3 dim = get_window_dimensions(&renderer);
+
+		float relx = (2.0*dim.y/dim.x)/2 - 1.0f;
+
+	//	render_billboard(&renderer, &context, texture_handle, -1, 1, relx, -1); 
 
 		swap_buffer(&renderer);
 	}
