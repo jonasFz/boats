@@ -309,11 +309,16 @@ Mesh_Data __load_ascii_stl_file(char *file_path){
 
 	int vertex_count = 0;
 
+	// I want to just skip the solid <name> line at the start
+	// because if it contains a v it screws with loading!
+	while(fgetc(f) != '\n');
+
 	while(1){
 		int input = fgetc(f);
 		if(input == EOF) break;
-		if(input == 'v'){ //Actually might be a bad idea if name has v
+		if(input == 'v'){ //Then we found a vector line
 			float v[3];
+			//Skipping the 'v' in vertex because we already pulled it out
 			int lets_just_check = fscanf(f, "ertex %f %f %f", &v[0], &v[1], &v[2]);
 			//int lets_just_check = sscanf(file, "vertex %f %f %f", &v[0], &v[1], &v[2]); Just leaving this here to remind not to use sscanf!
 			//Does a friggen strlen every time!
