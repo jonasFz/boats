@@ -7,6 +7,7 @@
 
 #include "matrix.h"
 #include "mesh.h"
+#include "bucket.h"
 
 char *load_file_as_string(const char *file_path, int *length);
 
@@ -216,19 +217,44 @@ char *load_raw(const char *file_path, int *length){
 	return ret;
 }
 
+void __join_stl_triangels(Mesh_Data *md){
 
-Mesh_Data load_stl_file(char *filepath){
-	Mesh_Data md;
-	int file_length = 0;
-	char *file = load_raw(filepath, &file_length);
+	int new_index_count = 0;
+
+	for(int i = 1; i < md->index_count; i++){
+		
+		float avx = md->vertices[i*3];
+		float avy = md->vertices[i*3+1];
+		float avz = md->vertices[i*3+2];
+
+		float anx = md->normals[i*3];
+		float any = md->normals[i*3+1];
+		float anz = md->normals[i*3+2];
+
+		for(int j = 0; j < i; i++){
+			float bvx = md->vertices[j*3];
+			float bvy = md->vertices[j*3+1];
+			float bvz = md->vertices[j*3+2];
 	
-	unsigned int triangle_count = *((unsigned int *)(file + 80));
+			float bnx = md->normals[j*3];
+			float bny = md->normals[j*3+1];
+			float bnz = md->normals[j*3+2];
 
-	for(int i = 84; i < 100; i++){
-		printf("%d: %x\n", i , file[i]);
+			//Check if they are the same, should probably actually check if they are PRETTY MUCH the same
+			if( avx == bvx && avy == bvy && avz == bvz &&
+				anx == bnx && any == bny && anz == bnz){
+				for(int k = 0; k < md->index_count; k++){
+				}
+			}
+		}
 	}
+}
 
-	printf("Triangle_count = %d\n", triangle_count);
+Mesh_Data __load_binary_stl_file(int file_length, char *file){
+	
+	Mesh_Data md;
+
+	unsigned int triangle_count = *((unsigned int *)(file + 80));
 
 	allocate_mesh(&md, triangle_count*3, triangle_count*3);
 
@@ -253,36 +279,109 @@ Mesh_Data load_stl_file(char *filepath){
 		md.vertices[v++] = *((float *)(file + file_offset)); file_offset+=4;
 
 		if(!(file[file_offset] == 0 && file[file_offset+1] == 0)){
-			printf("Failure to load stl file %s, we don't support attribute byte count being non zero\n", filepath);
 			return md;
 		}
 		file_offset += 2; //Skipping attribute byte count
 		
-		//Since we are not sharing verts, maybe we can add that later?
-		//It is just hard to do with our current shading method of per
-		//pixel lighting
-
-		//TODO, I somehow used the left hand rule instead of the right hand
-		//rule to calc normals, so this is a hack to make them face the right
-		//way, because obviously the model follows right hand rule.
 		md.indices[i] = i; i++;
 		md.indices[i] = i; i++;
 		md.indices[i] = i; i++;
 
 		triangles_loaded++;
 	}
-	for(int i = 0; i < 3; i++){
-		float x = md.vertices[i*3];
-		float y = md.vertices[i*3+1];
-		float z = md.vertices[i*3+2];
-
-		printf("%f %f %f\n", x, y, z);
-	}
 
 	__swap_y_and_z_for_opengl(&md);
 	calculate_normals(&md);
 
 	normalize_mesh(&md);
+	return md;
+
+}
+
+
+Mesh_Data __load_ascii_stl_file(char *file_path){
+	
+	FILE *f = fopen(file_path, "r");
+
+	Mesh_Data md;
+
+	Bucket b = make_bucket();
+
+	int vertex_count = 0;
+
+	while(1){
+		int input = fgetc(f);
+		if(input == EOF) break;
+		if(input == 'v'){ //Actually might be a bad idea if name has v
+			float v[3];
+			int lets_just_check = fscanf(f, "ertex %f %f %f", &v[0], &v[1], &v[2]);
+			//int lets_just_check = sscanf(file, "vertex %f %f %f", &v[0], &v[1], &v[2]); Just leaving this here to remind not to use sscanf!
+			//Does a friggen strlen every time!
+			assert(lets_just_check == 3);
+			write_to_bucket(&b, v, sizeof(float) * 3);
+
+			vertex_count++;
+		}
+	}
+
+	fclose(f);
+	printf("Number of vetex lines loaded = %d\n", vertex_count);
+
+	allocate_mesh(&md, vertex_count, vertex_count);
+	memcpy(md.vertices, b.data, vertex_count*sizeof(float)*3);
+
+	for(int i = 0; i < vertex_count; i++){
+		md.indices[i] = i;
+	}
+
+
+	destroy_bucket(&b);
+
+	__swap_y_and_z_for_opengl(&md);
+	calculate_normals(&md);
+
+	normalize_mesh(&md);
+	return md;
+
+}
+Mesh_Data load_stl_file(char *filepath){
+
+	Mesh_Data md;
+	int file_length = 0;
+	char *file = load_raw(filepath, &file_length);
+	
+
+	// Check if this is an ascii version or binary version
+	// I would love to be able to just check for the word "solid"
+	// at the beginning of the file, but I have found examples of
+	// binary stl files that still have that "solid" in their
+	// 80 byte headers, dumb
+	int we_think_its_ascii = 0;
+	
+	char check[] = "facet normal";
+	int length_of_check = strlen(check);
+	// If its not in the first thousands bytes then I think we can assume its not in here at all
+	// If someone puts a crazy long name in for the solid I guess this could be a problem!?
+	for(int i = 0; (i < file_length - length_of_check) && (i < 1000) && (we_think_its_ascii == 0); i++){
+		for(int j = 0; j < length_of_check; j++){
+			if(file[i+j] != check[j]){
+				break;
+			}
+			if(j == (length_of_check-1)){
+				we_think_its_ascii = 1;
+			}
+		}
+	}
+
+	if(we_think_its_ascii == 1){
+		printf("Loading %s as ascii stl file\n", filepath);
+		md = __load_ascii_stl_file(filepath);
+		//md = __load_ascii_stl_file(file_length, file);
+	}else{
+		printf("Loading %s as binary stl file\n", filepath);
+		md = __load_binary_stl_file(file_length, file);
+	}
+	
 	free(file);
 	return md;
 }

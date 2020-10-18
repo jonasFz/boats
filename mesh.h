@@ -5,6 +5,19 @@
 #include <stddef.h>
 
 typedef struct{
+	float vx;
+	float vy;
+	float vz;
+
+	float nx;
+	float ny;
+	float nz;
+
+	float tx;
+	float ty;
+}Vertex;
+
+typedef struct{
 	float *vertices;
 	int vertex_count;
 
