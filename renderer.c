@@ -132,15 +132,44 @@ void render_entities(Renderer *renderer, Render_Context *context, Entity* entiti
 		m = multiply_matrix(&m, &trans);
 
 
+		// Thanks http://www.songho.ca/opengl/gl_camera.html
 		Mat4 v = make_identity_matrix();
-		Mat4 v_r = make_rotation_matrix(context->camera.angle.x, context->camera.angle.y, context->camera.angle.z);
+
+		Vec3 eye = context->camera.entity.position;
+
+		Vec3 D = normalize(sub_vec(context->camera.entity.position, context->camera.facing));
+		Vec3 L = normalize(cross_product(make_vec3(0.0, 1.0, 0.0), D));
+		Vec3 U = normalize(cross_product(D, L));
+
+		v.data[0] = L.x; v.data[4] = L.y; v.data[8] = L.z;
+		v.data[1] = U.x; v.data[5] = U.y; v.data[9] = U.z;
+		v.data[2] = D.x; v.data[6] = D.y; v.data[10] = D.z;
+
+		v.data[12] = -L.x*eye.x - L.y*eye.y - L.z*eye.z;
+		v.data[13] = -U.x*eye.x - U.y*eye.y - U.z*eye.z;
+		v.data[14] = -D.x*eye.x - D.y*eye.y - D.z*eye.z;
+		//v.data[3] = context->camera.entity.position.x;
+		//v.data[7] = context->camera.entity.position.y;
+		//v.data[11] = context->camera.entity.position.z;
+		
+		/*Mat4 other = make_identity_matrix();
+		other.data[12] = -context->camera.entity.position.x;
+		other.data[13] = -context->camera.entity.position.y;
+		other.data[14] = -context->camera.entity.position.z;
+
+		v = multiply_matrix(&v, &other);
+*/
+
+		/*Mat4 v = make_identity_matrix();
+		Mat4 v_r = make_rotation_matrix(-context->camera.angle.x, -context->camera.angle.y, -context->camera.angle.z);
 		Mat4 v_t = make_translation_matrix(
 			-context->camera.entity.position.x,
 			-context->camera.entity.position.y,
 			-context->camera.entity.position.z
 		);
 		v = multiply_matrix(&v_t, &v_r);
-
+		*/
+		
 		GLuint mat_id = glGetUniformLocation(context->shader_program, "trans");
 		glUniformMatrix4fv(mat_id, 1, GL_FALSE, m.data);
 		GLuint projection_id = glGetUniformLocation(context->shader_program, "projection");
@@ -149,7 +178,7 @@ void render_entities(Renderer *renderer, Render_Context *context, Entity* entiti
 		GLuint view_id = glGetUniformLocation(context->shader_program, "view");
 		glUniformMatrix4fv(view_id, 1, GL_FALSE, v.data);
 
-		GLuint col_id= glGetUniformLocation(context->shader_program, "col");
+		GLuint col_id = glGetUniformLocation(context->shader_program, "col");
 		glUniform3f(col_id, entity.colour.x, entity.colour.y, entity.colour.z); 
 
 		GLuint light_id = glGetUniformLocation(context->shader_program, "light_position");

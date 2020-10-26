@@ -14,6 +14,7 @@ Vec3 make_vec3(float x, float y, float z){
 	return ret;
 }
 
+
 void show_vec3(Vec3 v){
 	printf("v3(%f %f %f)\n", v.x, v.y, v.z);
 }
@@ -141,6 +142,12 @@ Mat4 make_identity_matrix(){
 	return ret;
 }
 
+Mat4 make_zero_matrix(){
+	Mat4 ret;
+	memset(ret.data, 0, 16*sizeof(float));
+	return ret;
+}
+
 Mat4 make_projection_matrix(float a, float fov, float zfar, float znear){
 	float y_scale = (1/tan(fov/2))*a;
 	float x_scale = y_scale/a;
@@ -160,27 +167,35 @@ Mat4 make_projection_matrix(float a, float fov, float zfar, float znear){
 }
 
 Mat4 make_rotation_matrix(float rx, float ry, float rz){
-	Mat4 x = make_identity_matrix();
+	Mat4 x = make_zero_matrix();
+	x.data[0] = 1;
 	x.data[5] = cos(rx);
 	x.data[6] = sin(rx);
 	x.data[9] = -sin(rx);
 	x.data[10] = cos(rx);
+	x.data[15] = 1;
 
-	Mat4 y = make_identity_matrix();
+	Mat4 y = make_zero_matrix();
 	y.data[0] = cos(ry);
 	y.data[2] = -sin(ry);
+	y.data[5] = 1;
 	y.data[8] = sin(ry);
 	y.data[10] = cos(ry);
+	y.data[15] = 1;
 
-	Mat4 z = make_identity_matrix();
+	Mat4 z = make_zero_matrix();
 	z.data[0] = cos(rz);
 	z.data[1] = sin(rz);
 	z.data[4] = -sin(rz);
 	z.data[5] = cos(rz);
+	z.data[10] = 1;
+	z.data[15] = 1;
 
-	Mat4 xy = multiply_matrix(&y, &x);
 
-	return multiply_matrix(&z, &xy);
+	Mat4 zy = multiply_matrix(&z, &y);
+	return multiply_matrix(&zy, &x);
+	//Mat4 xy = multiply_matrix(&y, &x);
+	//return multiply_matrix(&z, &xy);
 }
 
 Mat4 make_scale_matrix(float x, float y, float z){
